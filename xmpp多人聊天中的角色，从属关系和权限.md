@@ -22,7 +22,7 @@ MUC定义了用户和房间的两大类权限束：Roles和Affiliates。Roles中
 Roles相关的权限：
 
 |__Privilege__|__None__|__Visitor__|__Participant__|__Moderator__|
-||
+|:-----------:|:------:|:---------:|:-------------:|:-----------:|
 |Present in Room|No|Yes|Yes|Yes|
 |Receive Messages|No|Yes|Yes|Yes|
 |Receive Occupant Presence|No|Yes|Yes|Yes|
@@ -49,7 +49,7 @@ Roles相关的权限：
 Affiliations相关的权限：
 
 |__Privilege__|__Outcast__|__None__|__Member__|__Admin__|__Owner__|
-||
+|:-----------:|:---------:|:------:|:--------:|:-------:|:-------:|
 |Enter Open Room|No|Yes|Yes|Yes|Yes|
 |Register with Open Room|No|Yes|N/A|N/A|N/A|
 |Retrieve Member List|No|No|Yes|Yes|Yes|
