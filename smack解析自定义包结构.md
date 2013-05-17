@@ -88,11 +88,12 @@ IQ提供者类可以实现`IQProvider`接口，或者继承`IQ`类。实现`IQPr
 
 * 注册自定义的`IQProvider`:
 	* `void addIQProvider(java.lang.String elementName, java.lang.String namespace, java.lang.Object provider)`
-	* `void removeExtensionProvider(java.lang.String elementName, java.lang.String namespace)`
+	* `void removeIQProvider(java.lang.String elementName, java.lang.String namespace)`
+
 	
 * 注册自定义的`PacketExtensionProvider`:
 	* `addExtensionProvider(java.lang.String elementName, java.lang.String namespace, java.lang.Object provider)`
-	* `void removeIQProvider(java.lang.String elementName, java.lang.String namespace)`
+	* `void removeExtensionProvider(java.lang.String elementName, java.lang.String namespace)`
 	
 ### 默认元素
 
