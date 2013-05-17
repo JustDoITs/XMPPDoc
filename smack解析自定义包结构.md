@@ -37,7 +37,7 @@ Smack的提供者架构是一种模块化的机制，包括为解析自定义包
 * jabber:iq:roster
 * jabber:iq:register
 
-由于XMPP和扩展协议中还有很多其他类型的IQ,所以需要一种灵活的解析机制。注册IQ提供者有两种方式：通过程序注册；在Jar包的META-INF目录添加*smack.providers*文件。文件是一个XML文件，可以包含若干个iqProvider项，格式如下：
+由于XMPP和扩展协议中还有很多其他类型的IQ,所以需要一种灵活的解析机制。注册IQ提供者有两种方式：通过程序注册；在Jar包的META-INF目录添加**smack.providers**文件。文件是一个XML文件，可以包含若干个iqProvider项，格式如下：
 
 	<?xml version="1.0"?>
 	 <smackProviders>
@@ -65,7 +65,7 @@ IQ提供者类可以实现`IQProvider`接口，或者继承`IQ`类。实现`IQPr
 
 ### PacketExtensionProvider
 
-包扩展提供者为自定义包提供了一个灵活的插件系统，这样，`IQ`,`Message`,`Presence`中自定义的子元素就可以被解析/XML化。每个扩展的提供者需要在*smack.providers*文件中注册一个elementName和namespace，如下：
+包扩展提供者为自定义包提供了一个灵活的插件系统，这样，`IQ`,`Message`,`Presence`中自定义的子元素就可以被解析/XML化。每个扩展的提供者需要在**smack.providers**文件中注册一个elementName和namespace，如下：
 
 	<?xml version="1.0"?>
 	<smackProviders>
@@ -97,6 +97,10 @@ IQ提供者类可以实现`IQProvider`接口，或者继承`IQ`类。实现`IQPr
 ### 默认元素
 
 `IQ`,`Message`,`Presence`中包含的一些子元素，已经由Smack解析，通常，这些元素都是基本的XMPP定义的元素，所以，不推荐对这些元素进行修改和扩展。
+
+### Maven打包复制文件到META-INF目录
+
+在src/main/resources目录下建一个META-INF目录，然后把smack.providers文件复制到这个目录，然后运行`mvn package`的时候，Maven自动把这个目录下的的文件拷到jar包的META-INF目录下。
 
 #### IQ
 
@@ -538,6 +542,26 @@ MultiTypeMessage是一个抽象类，抽象方法`public abstract String toXML()
 	
 		}
 	}
+
+可以在程序中注册扩展包提供者；
+
+	ProviderManager manager = ProviderManager.getInstance();
+	manager.addExtensionProvider("params", "yl:xmpp:params",
+			new MultiTypeMessageExtensionProvider());
+		
+或者在smack.providers中声明一个扩展包提供者：
+			
+**File : smack.providers**
+
+	<?xml version="1.0" encoding="UTF-8"?>
+	
+	<smackProviders>
+	    <extensionProvider>
+	        <elementName>params</elementName>
+	        <namespace>yl:xmpp:params</namespace>
+	        <className>com.irusher.xmpp.smackx.MultiTypeMessageExtensionProvider</className>
+	    </extensionProvider>
+	</smackProviders>
 
 ## 相关文档
 
