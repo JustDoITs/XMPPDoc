@@ -2,7 +2,7 @@
 
 by Rusher 2013-05-16
 
-## 背景
+## 需求
 
 XMPP发展这么多年来，积累了很多的扩展协议，涉及到方方面面。尽管如此，有时候，还是需要自定义协议内容来满足业务上的需求。例如：
 
@@ -12,6 +12,7 @@ XMPP发展这么多年来，积累了很多的扩展协议，涉及到方方面�
 	<message type="chat" to="robota@openfire.irusher.com" from="robotb@openfire.irusher.com/c3f953be" id="13051615553429">
 	  <body/>
 	  <params xmlns="yl:xmpp:params">
+	  	<param name="type">1</param>
 	    <param name="url">some_url</param>
 	    <param name="width">100</param>
 	    <param name="height">200</param>
@@ -20,7 +21,7 @@ XMPP发展这么多年来，积累了很多的扩展协议，涉及到方方面�
 
 对于smack来说，body,thread,subject,error,properties 之外的子元素，都需要用提供包扩展来指定解析。
 
-## Smack的提供者架构：包扩展(Packet Extensions)与自定义IQ
+## smack的提供者架构：包扩展(Packet Extensions)与自定义IQ
 
 Smack的提供者架构是一种模块化的机制，包括为解析自定义包结构而定义的包扩展和自定义IQ包。Smack扩展协议所用的正式提供者架构。现有的两种提供者：
 
@@ -47,9 +48,493 @@ Smack的提供者架构是一种模块化的机制，包括为解析自定义包
 	     </iqProvider>
 	 </smackProviders>
 
-每个IQ提供者对应一个元素名称和一个命名空间。上面的例子中，元素名称是'query',命名空间是'jabber:iq:time'。如果有出现重名，则使用先注册的。
+每个IQ提供者对应一个元素名称和一个命名空间。上面的例子中，元素名称是'query',命名空间是'jabber:iq:time'。如果有出现重名，则使用先从classpath中加载的类。
 
-IQ提供者类可以实现`IQProvider`接口，或者继承`IQ`类。实现`IQProvider`接口时，每个`IQProvider`负责解析原始的XML流，然后创建`IQ`对象；如果继承`IQ`类，
+IQ提供者类可以实现`IQProvider`接口，或者继承`IQ`类。实现`IQProvider`接口时，每个`IQProvider`负责解析原始的XML流，然后创建`IQ`对象；如果继承`IQ`类，则在解析XML过程中，利用Bean自省设置`IQ`实例的值。例如，下面这个XMPP包：
+
+	<iq type='result' to='joe@example.com' from='mary@example.com' id='time_1'>
+	    <query xmlns='jabber:iq:time'>
+	        <utc>20020910T17:58:35</utc>
+	        <tz>MDT</tz>
+	        <display>Tue Sep 10 12:58:35 2002</display>
+	    </query>
+	</iq>
+
+为了能使包自动映射到上面提到的Time对象，Time对象必需设置utc,tz,display的set方法。自省服务将试着自动的将XML中的String值转化为boolean,int,long,float,double或者IQ对象需要的Class。
 
 
 ### PacketExtensionProvider
+
+包扩展提供者为自定义包提供了一个灵活的插件系统，这样，`IQ`,`Message`,`Presence`中自定义的子元素就可以被解析/XML化。每个扩展的提供者需要在*smack.providers*文件中注册一个elementName和namespace，如下：
+
+	<?xml version="1.0"?>
+	<smackProviders>
+	    <extensionProvider>
+	        <elementName>x</elementName>
+	        <namespace>jabber:iq:event</namespace>
+	        <className>org.jivesoftware.smack.packet.MessageEvent</className>
+	    </extensionProvider>
+	</smackProviders>
+
+如果有出现重名，则使用先从classpath中加载的类。
+
+当一个包中有自定义的元素，解析任务将由对应的提供者接管。提供者可以实现`PacketExtensionProvider`接口，或者使标准的Java Bean。前一种情况，每个扩展提供者负责解析原始的XML流，然后构造出一个包扩展对象。后一种情况，将使用Bean自省自动设置包扩展对象的属性值。
+
+如果一个包扩展没有对应的提供者被注册，Smack将存储存储子包中的所有顶层子XML元素到`DefaultPacketExtension`对象，然后赋值给`Packet`对象。
+
+### 程序内注册提供者
+
+使用`org.jivesoftware.smack.provider.ProviderManager`类的单例，
+
+* 注册自定义的`IQProvider`:
+	* `void addIQProvider(java.lang.String elementName, java.lang.String namespace, java.lang.Object provider)`
+	* `void removeExtensionProvider(java.lang.String elementName, java.lang.String namespace)`
+	
+* 注册自定义的`PacketExtensionProvider`:
+	* `addExtensionProvider(java.lang.String elementName, java.lang.String namespace, java.lang.Object provider)`
+	* `void removeIQProvider(java.lang.String elementName, java.lang.String namespace)`
+	
+### 默认元素
+
+`IQ`,`Message`,`Presence`中包含的一些子元素，已经由Smack解析，通常，这些元素都是基本的XMPP定义的元素，所以，不推荐对这些元素进行修改和扩展。
+
+#### IQ
+
+|ElementName | Namespace|
+|:----------:|:--------:|
+|query|jabber:iq:auth|
+|query|jabber:iq:roster|
+|query|jabber:iq:register|
+|error|无|
+
+以及，其他在*smack.providers*文件中已经注册的元素和命名空间
+
+#### Message
+
+|ElementName | Namespace|
+|:----------:|:--------:|
+|subject|无|
+|body|无|
+|thread|无|
+|error|无|
+|properties|http://www.jivesoftware.com/xmlns/xmpp/properties|
+
+以及，其他在*smack.providers*文件中已经注册的元素和命名空间
+
+#### Precense
+
+|ElementName | Namespace|
+|:----------:|:--------:|
+|status|无|
+|priority|无|
+|show|无|
+|error|无|
+|properties|http://www.jivesoftware.com/xmlns/xmpp/properties|
+
+以及，其他在*smack.providers*文件中已经注册的元素和命名空间
+
+## smack解析过程
+
+1.在PacketReader中解析
+
+    /**
+     * Parse top-level packets in order to process them further.
+     *
+     * @param thread the thread that is being used by the reader to parse incoming packets.
+     */
+    private void parsePackets(Thread thread) {
+        try {
+            int eventType = parser.getEventType();
+            do {
+                if (eventType == XmlPullParser.START_TAG) {
+                    if (parser.getName().equals("message")) {
+                        processPacket(PacketParserUtils.parseMessage(parser));
+                    }
+                    else if (parser.getName().equals("iq")) {
+                        processPacket(PacketParserUtils.parseIQ(parser, connection));
+                    }
+                    else if (parser.getName().equals("presence")) {
+                        processPacket(PacketParserUtils.parsePresence(parser));
+                    }
+                    
+                    … other top-level element
+                
+2，调用PacketParserUtils.parseXXX();
+
+	/**
+     * Parses a message packet.
+     *
+     * @param parser the XML parser, positioned at the start of a message packet.
+     * @return a Message packet.
+     * @throws Exception if an exception occurs while parsing the packet.
+     */
+    public static Packet parseMessage(XmlPullParser parser) throws Exception {
+
+        ... 
+
+        // Parse sub-elements. We include extra logic to make sure the values
+        // are only read once. This is because it's possible for the names to appear
+        // in arbitrary sub-elements.
+        boolean done = false;
+        String thread = null;
+        Map<String, Object> properties = null;
+        while (!done) {
+            int eventType = parser.next();
+            if (eventType == XmlPullParser.START_TAG) {
+                String elementName = parser.getName();
+                String namespace = parser.getNamespace();
+                if (elementName.equals("subject")) {
+                    ...
+                }
+                else if (elementName.equals("body")) {
+                    ...
+                }
+                else if (elementName.equals("thread")) {
+                   ...
+                }
+                else if (elementName.equals("error")) {
+                    ...
+                }
+                else if (elementName.equals("properties") 
+                            && namespace.equals(PROPERTIES_NAMESPACE))
+                        
+                {
+                    ...
+                }
+                // Otherwise, it must be a packet extension.
+                else {
+                    message.addExtension(
+                    PacketParserUtils.parsePacketExtension(elementName, namespace, parser));
+                }
+            }
+            else if (eventType == XmlPullParser.END_TAG) {
+                if (parser.getName().equals("message")) {
+                    done = true;
+                }
+            }
+        }
+        
+        ...
+
+        return message;
+    }
+
+3.调用`PacketParserUtils.parsePacketExtension(elementName, namespace, parser));`方法，由`ProviderManager`查找对应的包扩展提供者，如果找到，则调用扩展的解析方法，如果没有找到，则解析子元素中顶级的元素，然后存到`DefaultPacketExtension`的对象中。
+
+    /**
+     * Parses a packet extension sub-packet.
+     *
+     * @param elementName the XML element name of the packet extension.
+     * @param namespace the XML namespace of the packet extension.
+     * @param parser the XML parser, positioned at the starting element of the extension.
+     * @return a PacketExtension.
+     * @throws Exception if a parsing error occurs.
+     */
+    public static PacketExtension parsePacketExtension(String elementName, String namespace, XmlPullParser parser)
+            throws Exception
+    {
+        // See if a provider is registered to handle the extension.
+        Object provider = ProviderManager.getInstance().getExtensionProvider(elementName, namespace);
+        if (provider != null) {
+            if (provider instanceof PacketExtensionProvider) {
+                return ((PacketExtensionProvider)provider).parseExtension(parser);
+            }
+            else if (provider instanceof Class) {
+                return (PacketExtension)parseWithIntrospection(
+                        elementName, (Class<?>)provider, parser);
+            }
+        }
+        // No providers registered, so use a default extension.
+        DefaultPacketExtension extension = new DefaultPacketExtension(elementName, namespace);
+        boolean done = false;
+        while (!done) {
+            int eventType = parser.next();
+            if (eventType == XmlPullParser.START_TAG) {
+                String name = parser.getName();
+                // If an empty element, set the value with the empty string.
+                if (parser.isEmptyElementTag()) {
+                    extension.setValue(name,"");
+                }
+                // Otherwise, get the the element text.
+                else {
+                    eventType = parser.next();
+                    if (eventType == XmlPullParser.TEXT) {
+                        String value = parser.getText();
+                        extension.setValue(name, value);
+                    }
+                }
+            }
+            else if (eventType == XmlPullParser.END_TAG) {
+                if (parser.getName().equals(elementName)) {
+                    done = true;
+                }
+            }
+        }
+        return extension;
+    }
+
+## 实现需求
+
+回到一开始的例子，我们对Message进行了扩展，所以需要定义一个`PacketExtension`，作为自定义的`params`对应的包扩展。
+
+MultiTypeMessage是一个抽象类，抽象方法`public abstract String toXML();`交给具体的子类去实现。这个类中还提供了一些工具方法，例如，组装`<param/>`,组装最终的`<params xmlns="yl:xmpp:params"`，使用反射将参数对注入具体的Message对象中。
+
+**File: MultiTypeMessage.java**
+
+	package com.irusher.xmpp.smackx;
+	
+	import java.lang.reflect.InvocationTargetException;
+	import java.lang.reflect.Method;
+	import java.util.Map;
+	
+	import org.jivesoftware.smack.packet.PacketExtension;
+	
+	public abstract class MultiTypeMessage implements PacketExtension {
+		
+		// params holder that store all sub-element of <params xmlns="yl:xmpp:params">
+		private Map<String, String> paramHolder;
+	
+		// different message type
+		private String type;
+		// TODO write other shared member variables here, e.g. passid,content etc.
+		// 
+		//
+		
+		// method in PacketExtension interface
+		public String getElementName() {
+			return "params";
+		}
+		// method in PacketExtension interface
+		public String getNamespace() {
+			return "yl:xmpp:params";
+		}
+		// method in PacketExtension interface
+		// when message is being sent,this method will be invoked 
+	    // to get this extension's XML presentation.
+		public abstract String toXML();
+	
+		String getSubElementName() {
+			return "param";
+		}
+	
+		String assembleFinalElment(String subElmentStr) {
+			StringBuilder sb = new StringBuilder();
+	
+			sb.append("<").append(getElementName()).append(" xmlns=\"")
+					.append(getNamespace()).append("\">");
+			sb.append(subElmentStr);
+			sb.append("</").append(getElementName()).append(">");
+	
+			return sb.toString();
+		}
+	
+		String assembleSubElement(String name, String value) {
+			StringBuilder sb = new StringBuilder();
+			sb.append("<").append(getSubElementName()).append(" ");
+			sb.append("name=\"").append(name).append("\">");
+			sb.append(value);
+			sb.append("</").append(getSubElementName()).append(">");
+	
+			return sb.toString();
+		}
+	
+		// utility method used to set object's value hold by the map
+		// by using java reflection
+		void parseStringToClassAttribute(Class<?> clazz, Object obj,
+				Map<String, String> params) {
+	
+			for (String key : params.keySet()) {
+				String value = params.get(key);
+	
+				String methodName = "set"
+						+ (String.valueOf(value.charAt(0)).toUpperCase())
+						+ (value.substring(1));
+	
+				try {
+					Method method = clazz.getMethod(methodName, String.class);
+					method.invoke(this, value);
+	
+				} catch (NoSuchMethodException e) {
+					e.printStackTrace();
+				} catch (SecurityException e) {
+					e.printStackTrace();
+				} catch (IllegalAccessException e) {
+					e.printStackTrace();
+				} catch (IllegalArgumentException e) {
+					e.printStackTrace();
+				} catch (InvocationTargetException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	
+		public Map<String, String> getParamHolder() {
+			return paramHolder;
+		}
+	
+		public void setParamHolder(Map<String, String> paramHolder) {
+			this.paramHolder = paramHolder;
+		}
+	
+		public enum MessageType {
+			TEXT("0"), IMAGE("1"), VOICE("2"), FOOT("3"), WEIBO("4");
+	
+			private final String type;
+	
+			private MessageType(String type) {
+				this.type = type;
+			}
+	
+			public String getType() {
+				return type;
+			}
+	
+			public static MessageType stringToMessageType(String s) {
+				if (s == null)
+					return null;
+	
+				if (s.equals("0")) {
+					return TEXT;
+				} else if (s.equals("1")) {
+					return IMAGE;
+				} else if (s.equals("2")) {
+					return VOICE;
+				} else if (s.equals("3")) {
+					return FOOT;
+				} else if (s.equals("4")) {
+					return WEIBO;
+				}
+				return null;
+			}
+		}
+	
+		public String getType() {
+			return type;
+		}
+	
+		public void setType(String type) {
+			this.type = type;
+		}
+	
+	}
+
+当smack解析收到的XML后，遇到元素名是'params',命名空间是'yl:xmpp:params'的子元素后，就会调用这个类的解析方法。
+
+**File: MultiTypeMessageExtensionProvider.java**
+
+	package com.irusher.xmpp.smackx;
+	
+	import java.util.HashMap;
+	import java.util.Map;
+	
+	import org.jivesoftware.smack.packet.PacketExtension;
+	import org.jivesoftware.smack.provider.PacketExtensionProvider;
+	import org.xmlpull.v1.XmlPullParser;
+	
+	public class MultiTypeMessageExtensionProvider implements
+			PacketExtensionProvider {
+	
+		public PacketExtension parseExtension(XmlPullParser parser)
+				throws Exception {
+	
+			Map<String, String> paramHolder = new HashMap<String, String>();
+			
+			// parse raw XML stream and put all param pairs into a map
+			boolean done = false;
+			while (!done) {
+				int eventType = parser.next();
+				if (eventType == XmlPullParser.START_TAG) {
+					if (parser.getName().equals("param")) {
+						paramHolder.put(parser.getAttributeValue(0),
+								parser.nextText());
+					}
+				} else if (eventType == XmlPullParser.END_TAG) {
+					if (parser.getName().equals("params")) {
+						done = true;
+					}
+				}
+			}
+			
+			// invoke MessageFactory to create a message object with different type 
+			MultiTypeMessage message = MessageFactory.getInstance().createMessage(
+					paramHolder);
+	
+			return message;
+		}
+	
+	}
+
+图片信息类，保持具体的图片信息相关的参数，并负责XML化。
+
+**File: ImageMessage.java**
+
+	package com.irusher.xmpp.smackx;
+	
+	import java.util.HashMap;
+	import java.util.Map;
+	
+	public class ImageMessage extends MultiTypeMessage {
+	
+		private String url;
+		private String width;
+		private String height;
+	
+		/**
+		 * <code>&lt;param name="url"&gt;http://xxx.com/img.png&lt;/param&gt;
+		 * &lt;param name="width"&gt;100&gt;
+		 * &lt;param name="height"&gt;100&lt;/param&gt;</code>
+		 */
+		@Override
+		public String toXML() {
+	
+			StringBuilder sb = new StringBuilder();
+			sb.append(assembleSubElement("url", this.url));
+			sb.append(assembleSubElement("width", String.valueOf(this.width)));
+			sb.append(assembleSubElement("height", String.valueOf(this.height)));
+			return assembleFinalElment(sb.toString());
+		}
+	
+		public String getUrl() {
+			return url;
+		}
+	
+		public void setUrl(String url) {
+			this.url = url;
+		}
+	
+		public String getWidth() {
+			return width;
+		}
+	
+		public void setWidth(String width) {
+			this.width = width;
+		}
+	
+		public String getHeight() {
+			return height;
+		}
+	
+		public void setHeight(String height) {
+			this.height = height;
+		}
+	
+		public ImageMessage(Map<String, String> params) {
+			this.setParamHolder(params);
+			this.setType(MessageType.IMAGE.getType());
+			parseStringToClassAttribute(ImageMessage.class, this, params);
+		}
+	
+		//for test
+		public static void main(String[] args) {
+	
+			Map<String, String> map = new HashMap<String, String>();
+			map.put("url", "url");
+			map.put("width", "width");
+			map.put("type", "type");
+	
+			ImageMessage im = new ImageMessage(map);
+	
+			System.out.println(im.toXML());
+	
+		}
+	}
