@@ -538,3 +538,8 @@ MultiTypeMessage是一个抽象类，抽象方法`public abstract String toXML()
 	
 		}
 	}
+
+## 相关文档
+
+* [Smack JavaDoc](http://www.igniterealtime.org/builds/smack/docs/latest/javadoc/org/jivesoftware/smack/packet/PacketExtension.html)
+* [Smack: Provider Architecture: Packet Extensions and Custom IQ's](http://www.igniterealtime.org/builds/smack/docs/latest/documentation/providers.html)
