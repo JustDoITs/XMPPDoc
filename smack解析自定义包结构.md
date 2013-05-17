@@ -294,27 +294,31 @@ MultiTypeMessage是一个抽象类，抽象方法`public abstract String toXML()
 	import org.jivesoftware.smack.packet.PacketExtension;
 	
 	public abstract class MultiTypeMessage implements PacketExtension {
-		
-		// params holder that store all sub-element of <params xmlns="yl:xmpp:params">
+	
+		// params holder that store all sub-element of <params
+		// xmlns="yl:xmpp:params">
 		private Map<String, String> paramHolder;
 	
 		// different message type
 		private String type;
+	
 		// TODO write other shared member variables here, e.g. passid,content etc.
-		// 
 		//
-		
+		//
+	
 		// method in PacketExtension interface
 		public String getElementName() {
 			return "params";
 		}
+	
 		// method in PacketExtension interface
 		public String getNamespace() {
 			return "yl:xmpp:params";
 		}
+	
 		// method in PacketExtension interface
-		// when message is being sent,this method will be invoked 
-	    // to get this extension's XML presentation.
+		// when message is being sent,this method will be invoked
+		// to get this extension's XML presentation.
 		public abstract String toXML();
 	
 		String getSubElementName() {
@@ -380,6 +384,14 @@ MultiTypeMessage是一个抽象类，抽象方法`public abstract String toXML()
 			this.paramHolder = paramHolder;
 		}
 	
+		public String getType() {
+			return type;
+		}
+	
+		public void setType(String type) {
+			this.type = type;
+		}
+	
 		public enum MessageType {
 			TEXT("0"), IMAGE("1"), VOICE("2"), FOOT("3"), WEIBO("4");
 	
@@ -412,15 +424,8 @@ MultiTypeMessage是一个抽象类，抽象方法`public abstract String toXML()
 			}
 		}
 	
-		public String getType() {
-			return type;
-		}
-	
-		public void setType(String type) {
-			this.type = type;
-		}
-	
 	}
+
 
 当smack解析收到的XML后，遇到元素名是'params',命名空间是'yl:xmpp:params'的子元素后，就会调用这个类的解析方法。
 
@@ -474,7 +479,6 @@ MultiTypeMessage是一个抽象类，抽象方法`public abstract String toXML()
 
 	package com.irusher.xmpp.smackx;
 	
-	import java.util.HashMap;
 	import java.util.Map;
 	
 	public class ImageMessage extends MultiTypeMessage {
@@ -482,6 +486,16 @@ MultiTypeMessage是一个抽象类，抽象方法`public abstract String toXML()
 		private String url;
 		private String width;
 		private String height;
+	
+		public ImageMessage() {
+			this.setType(MessageType.IMAGE.getType());
+		}
+	
+		public ImageMessage(Map<String, String> params) {
+			this.setParamHolder(params);
+			this.setType(MessageType.IMAGE.getType());
+			parseStringToClassAttribute(ImageMessage.class, this, params);
+		}
 	
 		/**
 		 * <code>&lt;param name="url"&gt;http://xxx.com/img.png&lt;/param&gt;
@@ -521,27 +535,8 @@ MultiTypeMessage是一个抽象类，抽象方法`public abstract String toXML()
 		public void setHeight(String height) {
 			this.height = height;
 		}
-	
-		public ImageMessage(Map<String, String> params) {
-			this.setParamHolder(params);
-			this.setType(MessageType.IMAGE.getType());
-			parseStringToClassAttribute(ImageMessage.class, this, params);
-		}
-	
-		//for test
-		public static void main(String[] args) {
-	
-			Map<String, String> map = new HashMap<String, String>();
-			map.put("url", "url");
-			map.put("width", "width");
-			map.put("type", "type");
-	
-			ImageMessage im = new ImageMessage(map);
-	
-			System.out.println(im.toXML());
-	
-		}
 	}
+
 
 可以在程序中注册扩展包提供者；
 
