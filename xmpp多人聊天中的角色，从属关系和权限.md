@@ -10,7 +10,7 @@ by Rusher
 
 MUC使用第二种方式管理权限。
 
-MUC定义了用户和房间的两大类权限束：Roles和Affiliates。Roles中定义的权限束作用在会话中，例如：用户收发消息的权限，更改昵称的权限等等。而Affilications中定义的关系则从用在房间上，例如：用户能否进入房间的权限，以及管理房间成员的权限等等。基于以上的定义，Roles和Affiliations不存在一一对应的关系。
+MUC定义了用户和房间的两大类权限束：Roles和Affiliates。Roles中定义的权限束作用在会话中，例如：用户收发消息的权限，更改昵称的权限等等。而Affilications中定义的关系则作用在房间上，例如：用户能否进入房间的权限，以及管理房间成员的权限等等。基于以上的定义，Roles和Affiliations不存在一一对应的关系。
 
 ### Roles
 
@@ -61,6 +61,8 @@ Affiliations相关的权限：
 |Edit Owner List|No|No|No|No|Yes|
 |Change Room Configuration|No|No|No|No|Yes|
 |Destroy Room|No|No|No|No|Yes|
+
+>    这两种方式，可以看做是不同的角度进行授权，Roles是约束在房间内能干什么；Affiliations是约束对房间本身能干什么。
 
 ## 房间设置
 
